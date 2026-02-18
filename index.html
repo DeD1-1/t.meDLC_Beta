@@ -32,51 +32,47 @@
         // Переименовали переменную в mySupabase, чтобы не было конфликта
         const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-        async function loadPosts() {
-            const feedElement = document.getElementById('feed');
-            console.log("Начинаю загрузку...");
-    
-            try {
-                // Используем новое имя переменной mySupabase
-                const { data, error } = await mySupabase
-                    .from('posts')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-    
-                if (error) throw error;
-    
-                if (data.length === 0) {
-                    feedElement.innerHTML = "База подключена, но в таблице 'posts' пока пусто.";
-                    return;
-                }
-    
-                feedElement.innerHTML = `Найдено постов: ${data.length}<br><br>`;
-                
-                data.forEach(post => {
-                    const item = document.createElement('div');
-                    item.style.border = "1px solid #ccc";
-                    item.style.padding = "10px";
-                    item.style.marginBottom = "10px";
-                    item.style.background = "white";
-                    item.style.borderRadius = "8px";
-                    item.innerHTML = `
-                        <b>Текст:</b> ${post.caption || 'Нет описания'}<br>
-                        <small style="color: gray;">ID сообщения: ${post.tg_message_id}</small>
-                    `;
-                    feedElement.appendChild(item);
-                });
-    
-            } catch (err) {
-                feedElement.innerHTML = "Ошибка: " + err.message;
-                console.error(err);
-            }
-        }
+			async function loadPosts() {
+		const feedElement = document.getElementById('feed');
+		const groupUsername = 'tmeDLCBeta'; // Например, 'durov' без @
+
+		try {
+			const { data, error } = await mySupabase
+				.from('posts')
+				.select('*')
+				.order('created_at', { ascending: false });
+
+			if (error) throw error;
+			feedElement.innerHTML = '';
+
+			data.forEach(post => {
+				const postContainer = document.createElement('div');
+				postContainer.style.marginBottom = "20px";
+				postContainer.style.display = "flex";
+				postContainer.style.justifyContent = "center";
+
+				// Создаем скрипт виджета Telegram
+				const script = document.createElement('script');
+				script.async = true;
+				script.src = "https://telegram.org/js/telegram-widget.js?22";
+				script.setAttribute('data-telegram-post', `${groupUsername}/${post.tg_message_id}`);
+				script.setAttribute('data-width', '100%');
+
+				postContainer.appendChild(script);
+				feedElement.appendChild(postContainer);
+			});
+
+		} catch (err) {
+			feedElement.innerHTML = "Ошибка: " + err.message;
+		}
+	}
     
         loadPosts();
     </script>
 </body>
 
 </html>
+
 
 
 
