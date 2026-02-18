@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Mini App - Feed</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        .post-card { background: white; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .post-card img { width: 100%; display: block; background: #ddd; min-height: 200px; }
+        .post-content { padding: 12px; }
+        .caption { font-size: 14px; color: #1c1e21; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h2>Лента постов</h2>
+        <div id="feed">Загрузка...</div>
+    </div>
+
+    <script>
+        // Инициализация Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрыть на все окно
+
+        // НАСТРОЙКИ SUPABASE (Вставьте свои данные)
+        const SUPABASE_URL = 'https://wxqkyprbigekdejmiitk.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4cWt5cHJiaWdla2Rlam1paXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MTQzNDgsImV4cCI6MjA4Njk5MDM0OH0.uTxzdPHbG9y6YIRf16VU0Pl2B9NFQfX0QBNdfCSN5Vk';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function loadPosts() {
+            const feedElement = document.getElementById('feed');
+            
+            // 1. Получаем данные из таблицы posts
+            const { data, error } = await supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                feedElement.innerHTML = "Ошибка загрузки: " + error.message;
+                return;
+            }
+
+            // 2. Очищаем ленту
+            feedElement.innerHTML = '';
+
+            // 3. Рисуем каждый пост
+            data.forEach(post => {
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                
+                // ВАЖНО: Telegram не отдает прямую ссылку на фото через file_id в браузере.
+                // Чтобы увидеть фото в Mini App, нужно либо проксировать его через бота, 
+                // либо использовать специальные ссылки. Пока просто выведем текст и ID.
+                card.innerHTML = `
+                    <div class="post-content">
+                        <p class="caption">${post.caption || 'Без описания'}</p>
+                        <small style="color: gray;">ID файла: ${post.file_id.substring(0, 20)}...</small>
+                    </div>
+                `;
+                feedElement.appendChild(card);
+            });
+        }
+
+        loadPosts();
+    </script>
+</body>
+</html>
