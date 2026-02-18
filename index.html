@@ -23,49 +23,60 @@
     <script>
         // Инициализация Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Раскрыть на все окно
-
-        // НАСТРОЙКИ SUPABASE (Вставьте свои данные)
-        const SUPABASE_URL = "https://wxqkyprbigekdejmiitk.supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4cWt5cHJiaWdla2Rlam1paXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MTQzNDgsImV4cCI6MjA4Njk5MDM0OH0.uTxzdPHbG9y6YIRf16VU0Pl2B9NFQfX0QBNdfCSN5Vk";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        tg.expand();
+    
+        // НАСТРОЙКИ SUPABASE
+        const SUPABASE_URL = 'https://wxqkyprbigekdejmiitk.supabase.co'; // Ваш URL со скриншота
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4cWt5cHJiaWdla2Rlam1paXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MTQzNDgsImV4cCI6MjA4Njk5MDM0OH0.uTxzdPHbG9y6YIRf16VU0Pl2B9NFQfX0QBNdfCSN5Vk'; // Ваш ключ со скриншота
+        
+        // Переименовали переменную в mySupabase, чтобы не было конфликта
+        const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
         async function loadPosts() {
             const feedElement = document.getElementById('feed');
             console.log("Начинаю загрузку...");
-        
+    
             try {
-                const { data, error } = await supabaseClient.from('posts').select('*');
+                // Используем новое имя переменной mySupabase
+                const { data, error } = await mySupabase
                     .from('posts')
-                    .select('*');
-        
+                    .select('*')
+                    .order('created_at', { ascending: false });
+    
                 if (error) throw error;
-        
+    
                 if (data.length === 0) {
                     feedElement.innerHTML = "База подключена, но в таблице 'posts' пока пусто.";
                     return;
                 }
-        
+    
                 feedElement.innerHTML = `Найдено постов: ${data.length}<br><br>`;
+                
                 data.forEach(post => {
                     const item = document.createElement('div');
                     item.style.border = "1px solid #ccc";
                     item.style.padding = "10px";
-                    item.style.marginBottom = "5px";
-                    item.innerHTML = `<b>Текст:</b> ${post.caption || 'Нет текста'}<br><small>ID: ${post.tg_message_id}</small>`;
+                    item.style.marginBottom = "10px";
+                    item.style.background = "white";
+                    item.style.borderRadius = "8px";
+                    item.innerHTML = `
+                        <b>Текст:</b> ${post.caption || 'Нет описания'}<br>
+                        <small style="color: gray;">ID сообщения: ${post.tg_message_id}</small>
+                    `;
                     feedElement.appendChild(item);
                 });
-        
+    
             } catch (err) {
-                feedElement.innerHTML = "Критическая ошибка: " + err.message;
+                feedElement.innerHTML = "Ошибка: " + err.message;
                 console.error(err);
             }
         }
-
+    
         loadPosts();
     </script>
 </body>
 
 </html>
+
 
 
