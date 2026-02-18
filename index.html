@@ -32,18 +32,47 @@
         // Переименовали переменную в mySupabase, чтобы не было конфликта
         const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-			async function loadPosts() {
-		const feedElement = document.getElementById('feed');
-		const groupUsername = 'tmeDLCBeta'; // Например, 'durov' без @
+		async function loadPosts() {
+			const feedElement = document.getElementById('feed');
+			
+			// Получаем данные от Telegram
+			const tg = window.Telegram.WebApp;
+			// Параметр из startapp попадает в initDataUnsafe.start_param
+			let groupId = tg.initDataUnsafe.start_param; 
+			
+			if (groupId) {
+				groupId = groupId.replace("_", "-");
+				console.log("Загрузка для группы:", groupId);
+			} else {
+				// Если открыли просто так, попробуем старый метод (для тестов в браузере)
+				const urlParams = new URLSearchParams(window.location.search);
+				groupId = urlParams.get('group')?.replace("_", "-");
+			}
 
-		try {
-			const { data, error } = await mySupabase
-				.from('posts')
-				.select('*')
-				.order('created_at', { ascending: false });
+			if (!groupId) {
+				feedElement.innerHTML = "Ошибка: ID группы не передан.";
+				return;
+			}
 
-			if (error) throw error;
-			feedElement.innerHTML = '';
+			try {
+				// 2. Сначала найдем внутренний ID сообщества в Supabase
+				const { data: community } = await mySupabase
+					.from('communities')
+					.select('id')
+					.eq('tg_chat_id', groupId)
+					.single();
+
+				if (!community) {
+					feedElement.innerHTML = "Группа не зарегистрирована в системе.";
+					return;
+				}
+
+				// 3. Загружаем посты ТОЛЬКО для этой группы
+				const { data, error } = await mySupabase
+					.from('posts')
+					.select('*')
+					.eq('community_id', community.id) // ФИЛЬТР!
+					.order('created_at', { ascending: false });
 
 			data.forEach(post => {
 				const postContainer = document.createElement('div');
@@ -68,23 +97,22 @@
 	}
     
         loadPosts();
-			// Подписываемся на изменения в таблице posts
-const mySubscription = mySupabase
-    .channel('public:posts')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
-        console.log('Пришел новый пост!', payload.new);
-        
-        // Вместо перезагрузки всей страницы, просто вызываем загрузку заново
-        // Или добавляем один новый пост в начало списка
-        loadPosts(); 
-    })
-    .subscribe();
+	mySupabase
+	  .channel('posts_realtime')
+	  .on(
+		'postgres_changes', 
+		{ 
+			event: 'INSERT', 
+			schema: 'public', 
+			table: 'posts',
+			filter: `community_id=eq.${community.id}` // Слушать только "свои" посты
+		}, 
+		(payload) => {
+		  loadPosts(); 
+		}
+	  )
+	  .subscribe();
     </script>
 </body>
 
 </html>
-
-
-
-
-
