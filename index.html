@@ -91,23 +91,26 @@
 		}
     
         loadPosts();
-	mySupabase
-	  .channel('posts_realtime')
-	  .on(
-		'postgres_changes', 
-		{ 
-			event: 'INSERT', 
-			schema: 'public', 
-			table: 'posts',
-			filter: `community_id=eq.${community.id}` // Слушать только "свои" посты
-		}, 
-		(payload) => {
-		  loadPosts(); 
-		}
-	  )
-	  .subscribe();
+		mySupabase
+		  .channel('posts_realtime')
+		  .on(
+		    'postgres_changes', 
+		    { 
+		        event: 'INSERT', 
+		        schema: 'public', 
+		        table: 'posts',
+		        filter: `community_id=eq.${community.id}` 
+		    }, 
+		    (payload) => {
+		      console.log('Пришел пост для этой группы!', payload.new);
+		      // Вместо полной перезагрузки страницы просто вызываем loadPosts()
+		      loadPosts(); 
+		    }
+		  )
+		  .subscribe();
     </script>
 </body>
 
 </html>
+
 
