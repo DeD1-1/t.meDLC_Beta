@@ -33,68 +33,62 @@
         const mySupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
 		async function loadPosts() {
-			const feedElement = document.getElementById('feed');
-			
-			// Получаем данные от Telegram
-			const tg = window.Telegram.WebApp;
-			// Параметр из startapp попадает в initDataUnsafe.start_param
-			let groupId = tg.initDataUnsafe.start_param; 
-			
-			if (groupId) {
-				groupId = groupId.replace("_", "-");
-				console.log("Загрузка для группы:", groupId);
-			} else {
-				// Если открыли просто так, попробуем старый метод (для тестов в браузере)
-				const urlParams = new URLSearchParams(window.location.search);
-				groupId = urlParams.get('group')?.replace("_", "-");
-			}
-
-			if (!groupId) {
-				feedElement.innerHTML = "Ошибка: ID группы не передан.";
-				return;
-			}
-
-			try {
-				// 2. Сначала найдем внутренний ID сообщества в Supabase
-				const { data: community } = await mySupabase
-					.from('communities')
-					.select('id')
-					.eq('tg_chat_id', groupId)
-					.single();
-
-				if (!community) {
-					feedElement.innerHTML = "Группа не зарегистрирована в системе.";
-					return;
-				}
-
-				// 3. Загружаем посты ТОЛЬКО для этой группы
-				const { data, error } = await mySupabase
-					.from('posts')
-					.select('*')
-					.eq('community_id', community.id) // ФИЛЬТР!
-					.order('created_at', { ascending: false });
-
-			data.forEach(post => {
-				const postContainer = document.createElement('div');
-				postContainer.style.marginBottom = "20px";
-				postContainer.style.display = "flex";
-				postContainer.style.justifyContent = "center";
-
-				// Создаем скрипт виджета Telegram
-				const script = document.createElement('script');
-				script.async = true;
-				script.src = "https://telegram.org/js/telegram-widget.js?22";
-				script.setAttribute('data-telegram-post', `${groupUsername}/${post.tg_message_id}`);
-				script.setAttribute('data-width', '100%');
-
-				postContainer.appendChild(script);
-				feedElement.appendChild(postContainer);
-			});
-
-		} catch (err) {
-			feedElement.innerHTML = "Ошибка: " + err.message;
+		    const feedElement = document.getElementById('feed');
+		    const tg = window.Telegram.WebApp;
+		    
+		    // 1. Получаем ID из параметров запуска
+		    let rawId = tg.initDataUnsafe.start_param || new URLSearchParams(window.location.search).get('group');
+		    if (!rawId) {
+		        feedElement.innerHTML = "Ошибка: ID группы не найден. Запустите через бота.";
+		        return;
+		    }
+		    const chatId = rawId.replace("_", "-");
+		
+		    try {
+		        // 2. Получаем данные о группе из базы
+		        const { data: community, error: commError } = await mySupabase
+		            .from('communities')
+		            .select('id, tg_username')
+		            .eq('tg_chat_id', chatId)
+		            .single();
+		
+		        if (commError || !community || !community.tg_username) {
+		            feedElement.innerHTML = "Группа не настроена или не публична.";
+		            return;
+		        }
+		
+		        const groupUsername = community.tg_username; // Теперь переменная определена!
+		
+		        // 3. Загружаем посты
+		        const { data: posts, error: postError } = await mySupabase
+		            .from('posts')
+		            .select('*')
+		            .eq('community_id', community.id)
+		            .order('created_at', { ascending: false });
+		
+		        if (postError) throw postError;
+		
+		        feedElement.innerHTML = ''; // Очистка
+		
+		        posts.forEach(post => {
+		            const container = document.createElement('div');
+		            container.style.marginBottom = "15px";
+		            
+		            // Вставляем виджет Telegram
+		            const script = document.createElement('script');
+		            script.async = true;
+		            script.src = "https://telegram.org/js/telegram-widget.js?22";
+		            script.setAttribute('data-telegram-post', `${groupUsername}/${post.tg_message_id}`);
+		            script.setAttribute('data-width', '100%');
+		            
+		            container.appendChild(script);
+		            feedElement.appendChild(container);
+		        });
+		
+		    } catch (err) {
+		        feedElement.innerHTML = "Ошибка загрузки: " + err.message;
+		    }
 		}
-	}
     
         loadPosts();
 	mySupabase
@@ -116,3 +110,4 @@
 </body>
 
 </html>
+
